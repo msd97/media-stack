@@ -1,6 +1,25 @@
 version: '2'
 name: nginx
 services:
+  tailscale-nginx:
+    image: tailscale/tailscale:stable
+    container_name: tscale
+    network_mode: service:nginx
+    environment:
+      - TS_AUTHKEY=${TS_KEY}
+      - TS_HOSTNAME=media-server
+      - TS_EXTRA_ARGS=--advertise-tags=tag:container
+      - TS_STATE_DIR=/var/lib/tailscale
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - net_admin
+      - sys_module
+    depends_on:
+      - nginx
+    restart: unless-stopped
   nginx:
     image: nginx:1.27.1-alpine
     container_name: nginx
@@ -13,10 +32,12 @@ services:
       - 80:80
       - 443:443
     restart: unless-stopped
-
+  
 volumes:
   nginx-config:
   letsencrypt:
+  tailscale-state:
+    driver: local
 
 networks:
   mynetwork:
