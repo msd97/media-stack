@@ -7,7 +7,7 @@ services:
     ## Read https://github.com/qdm12/gluetun-wiki/tree/main/setup/providers for details on configuring VPN for your service provider.
     profiles: ["vpn"]
     container_name: vpn
-    image: qmcgaw/gluetun:v3.40.0
+    image: qmcgaw/gluetun:latest
     cap_add:
       - NET_ADMIN
     environment:
@@ -40,7 +40,8 @@ services:
       # - /yourpath/yourconfig.conf:/gluetun/config.conf:ro
 
     networks:
-      - mynetwork
+      mynetwork:
+        ipv4_address: ${VPN_STATIC_CONTAINER_IP}
 
     devices:
       - /dev/net/tun:/dev/net/tun
@@ -60,7 +61,7 @@ services:
   qbittorrent:
     profiles: ["vpn", "no-vpn"]
     container_name: qbittorrent
-    image: lscr.io/linuxserver/qbittorrent:5.0.4
+    image: lscr.io/linuxserver/qbittorrent:latest
 
     # Unomment below if vpn is enabled
     depends_on:               # Uncomment this line if vpn is enabled
@@ -93,7 +94,7 @@ services:
   radarr:
     profiles: ["vpn", "no-vpn"]
     container_name: radarr
-    image: lscr.io/linuxserver/radarr:5.21.1
+    image: lscr.io/linuxserver/radarr:latest
     networks:
       # - mynetwork   # Comment this line if VPN is enabled
     ## Uncomment below lines if VPN is enabled
@@ -112,7 +113,7 @@ services:
 
   sonarr:
     profiles: ["vpn", "no-vpn"]
-    image: linuxserver/sonarr:4.0.14
+    image: linuxserver/sonarr:latest
     container_name: sonarr
     networks:
     #   - mynetwork   # Comment this line if VPN is enabled
@@ -133,7 +134,7 @@ services:
   prowlarr:
     profiles: ["vpn", "no-vpn"]
     container_name: prowlarr
-    image: linuxserver/prowlarr:1.33.3
+    image: linuxserver/prowlarr:latest
 
     # Uncomment below if vpn is enabled
     depends_on:               # Uncomment this line if vpn is enabled
@@ -157,10 +158,11 @@ services:
 
   jellyseerr:
     profiles: ["vpn", "no-vpn"]
-    image: fallenbagel/jellyseerr:2.5.2
+    image: fallenbagel/jellyseerr:latest
     container_name: jellyseerr
     networks:
-      - mynetwork
+      mynetwork:
+        ipv4_address: ${JELLYSEERR_STATIC_CONTAINER_ADDRESS}
     environment:
       - PUID=1000
       - PGID=1000
@@ -173,7 +175,7 @@ services:
 
   jellyfin:
     profiles: ["vpn", "no-vpn"]
-    image: linuxserver/jellyfin:10.10.7
+    image: linuxserver/jellyfin:latest
     container_name: jellyfin
     networks:
       mynetwork:
@@ -193,6 +195,45 @@ services:
       - 8920:8920
     restart: unless-stopped
   
+  bazarr:
+    profiles: ["vpn", "no-vpn"]
+    depends_on:
+      - radarr
+      - sonarr
+    image: linuxserver/bazarr:latest
+    container_name: bazarr
+    networks:
+      mynetwork:
+        ipv4_address: ${BAZARR_STATIC_CONTAINER_IP}
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+    volumes:
+      - bazarr-config:/config
+      - torrent-downloads:/downloads
+    ports:
+      - 6767:6767
+    restart: unless-stopped
+
+  #---------------------------------------------------------------------#
+  #     Homarr - A simple, yet powerful dashboard for your server.      #
+  #---------------------------------------------------------------------#
+  homarr:
+    container_name: homarr
+    image: ghcr.io/homarr-labs/homarr:latest
+    restart: unless-stopped
+    networks:
+      mynetwork:
+        ipv4_address: ${HOMARR_STATIC_CONTAINER_IP}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock # Optional, only if you want docker integration
+      - homarr-appdata:/appdata
+    environment:
+      - SECRET_ENCRYPTION_KEY=${HOMARR_SECRET_KEY}
+    ports:
+      - 7575:7575
+
   # Doc: https://github.com/navilg/cleanmyarr
   # cleanmyarr:
   #   profiles: ["vpn", "no-vpn"]
@@ -232,6 +273,8 @@ volumes:
   jellyfin-config:
   qbittorrent-config:
   jellyseerr-config:
+  bazarr-config:
+  homarr-appdata:
   # cleanmyarr-config:
 
 networks:
